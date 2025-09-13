@@ -1,0 +1,21 @@
+name: Validate CSL-JSON
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install jsonschema
+      - name: Validate biblio.json
+        run: |
+          python - <<'PY'
+          import json
+          from jsonschema import Draft202012Validator
+          sch = json.load(open('data/schema.json'))
+          bib = json.load(open('data/biblio.json'))
+          Draft202012Validator(sch).validate(bib)
+          print("OK: biblio.json validates.")
+          PY

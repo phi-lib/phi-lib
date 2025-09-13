@@ -1,0 +1,10 @@
+philebus bibliography/
+├─ index.html
+├─ assets/
+│  ├─ style.css
+│  └─ elasticlunr.min.js   ← Datei einchecken (siehe Schritt 4)
+├─ data/
+│  ├─ biblio.json
+│  └─ schema.json
+└─ .github/workflows/
+   └─ validate.yml

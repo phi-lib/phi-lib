@@ -4,11 +4,10 @@
   <meta charset="utf-8">
   <title>Phi-Lib — Pilot Bibliography</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- CSS wird dynamisch mit korrektem Basis-Pfad injiziert -->
   <style>
     :root { --max: 900px; --fg:#111; --muted:#666; --border:#e5e5e5; }
     * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif; color: var(--fg); margin: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; color: var(--fg); margin: 0; }
     header, section { max-width: var(--max); margin: 0 auto; padding: 1.25rem; }
     header { border-bottom: 1px solid var(--border); }
     h1 { font-size: 1.5rem; margin: .2rem 0 .6rem; }
@@ -18,18 +17,14 @@
     #q { width:100%; padding:.75rem; border:1px solid var(--border); border-radius:.5rem; }
     #results { padding-left:1.25rem; }
     #results li { margin:.6rem 0; }
-    em { font-style: italic; }
-    a { text-decoration:none; border-bottom:1px solid currentColor; }
-    a:hover { opacity:.8; }
-    .ok { color: #0a7a0a; }
-    .err { color: #a00; }
+    .ok { color:#0a7a0a; } .err { color:#a00; }
     code { background:#f7f7f7; padding:.1rem .3rem; border:1px solid #eee; border-radius:.25rem; }
   </style>
 </head>
 <body>
 <header>
   <h1>Phi-Lib — Pilot Bibliography</h1>
-  <p>Diagnose + Suche. Zuerst wird geprüft, ob alle Ressourcen unter dem korrekten Pfad erreichbar sind.</p>
+  <p>Diagnose + Suche (statisch konfiguriert).</p>
 </header>
 
 <section id="diag">
@@ -54,84 +49,90 @@
 </section>
 
 <script>
-/** 1) Basis-URL robust bestimmen (funktioniert für GitHub Pages-Projektseiten) */
-(function(){
-  // pathname z.B. "/IHRNAME.github.io/phi-lib/" oder "/phi-lib/"
-  // Wir schneiden bis zum zweiten Segment ("/phi-lib/") inklusive Slash.
-  const segs = location.pathname.split('/').filter(Boolean);
-  // Falls Repo-Name in Pfad vorkommt, ermitteln:
-  let basePath = '/';
-  if (segs.length) {
-    // Suche das Segment, das wie der Repo-Name aussieht (heuristisch: letztes Segment)
-    const repo = segs[0].endsWith('.github.io') ? segs[1] : segs[0];
-    basePath = '/' + repo + '/';
-  }
-  // Sonderfall: Wenn already auf root (z.B. lokal), basePath = '/'
-  if (location.hostname.endsWith('.github.io') && !location.pathname.includes('/')) {
-    basePath = '/';
-  }
-  window.__BASE__ = location.origin + basePath;
-})();
-</script>
+/* Feste Basis-URL: genau Ihre Pages-URL MIT abschließendem Slash */
+const BASE = "https://phi-lib.github.io/phi-lib/";
 
-<script>
-/** 2) Sichtbare Diagnose + dynamisches Nachladen von CSS/JS/JSON */
+const URLS = {
+  css: BASE + "assets/style.css",
+  js:  BASE + "assets/elasticlunr.min.js",
+  json:BASE + "data/biblio.json"
+};
+
+const checks = document.getElementById('checks');
+function add(ok, label, url){
+  const li = document.createElement('li');
+  li.innerHTML = (ok?'<span class="ok">OK</span>':'<span class="err">FEHLER</span>') +
+    ' — ' + label + ': <code>'+url+'</code>';
+  checks.appendChild(li);
+}
+
 (async function(){
-  const BASE = window.__BASE__;
-  const checks = document.getElementById('checks');
+  // 1) CSS testen + laden
+  try { const r = await fetch(URLS.css, {method:'HEAD', cache:'no-store'}); add(r.ok,'CSS',URLS.css); } catch { add(false,'CSS',URLS.css); }
+  const link = document.createElement('link'); link.rel='stylesheet'; link.href=URLS.css; document.head.appendChild(link);
 
-  function add(status, label, url) {
-    const li = document.createElement('li');
-    li.innerHTML = (status ? '<span class="ok">OK</span>' : '<span class="err">FEHLER</span>')
-      + ' — ' + label + ': <code>' + url + '</code>';
-    checks.appendChild(li);
-  }
-
-  // a) CSS injizieren
-  const cssURL = BASE + 'assets/style.css';
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = cssURL;
-  document.head.appendChild(link);
-  // Wir testen CSS via HEAD-Request (fetch), GitHub erlaubt das
-  try {
-    const r = await fetch(cssURL, { method: 'HEAD', cache: 'no-store' });
-    add(r.ok, 'CSS', cssURL);
-  } catch(e) {
-    add(false, 'CSS', cssURL);
-  }
-
-  // b) JSON testen + laden
-  const jsonURL = BASE + 'data/biblio.json';
+  // 2) JSON laden
   let items = [];
   try {
-    const r = await fetch(jsonURL, { cache: 'no-store' });
-    add(r.ok, 'JSON', jsonURL);
-    if (!r.ok) throw new Error('JSON ' + r.status);
+    const r = await fetch(URLS.json, {cache:'no-store'});
+    add(r.ok,'JSON',URLS.json);
+    if(!r.ok) return;
     items = await r.json();
-    const c = document.getElementById('count');
-    c.textContent = `Loaded ${items.length} records`;
-  } catch(e) {
-    add(false, 'JSON', jsonURL);
-  }
+    document.getElementById('count').textContent = `Loaded ${items.length} records`;
+  } catch { add(false,'JSON',URLS.json); return; }
 
-  // c) elasticlunr dynamisch laden
-  const jsURL = BASE + 'assets/elasticlunr.min.js';
+  // 3) JS-Bibliothek laden
   try {
-    const r = await fetch(jsURL, { method: 'HEAD', cache: 'no-store' });
-    add(r.ok, 'JS (elasticlunr)', jsURL);
-    if (!r.ok) throw new Error('JS ' + r.status);
-    await new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = jsURL;
-      s.onload = resolve;
-      s.onerror = () => reject(new Error('Script load error'));
-      document.body.appendChild(s);
-    });
-  } catch(e) {
-    add(false, 'JS (elasticlunr)', jsURL);
+    const r = await fetch(URLS.js, {method:'HEAD', cache:'no-store'});
+    add(r.ok,'JS (elasticlunr)',URLS.js);
+    if(!r.ok) return;
+    await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=URLS.js; s.onload=res; s.onerror=()=>rej(); document.body.appendChild(s); });
+  } catch { add(false,'JS (elasticlunr)',URLS.js); return; }
+
+  // 4) App starten (nur wenn alles ok)
+  document.getElementById('app').style.display = '';
+
+  const idx = elasticlunr(function () {
+    this.setRef('id');
+    this.addField('title'); this.addField('container'); this.addField('authors'); this.addField('year'); this.addField('keyword');
+  });
+
+  const byId = {};
+  for (const it of items) {
+    const authors = (it.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', ');
+    const year = (it.issued && it.issued["date-parts"] && it.issued["date-parts"][0][0]) || '';
+    const doc = { id: it.id, title: it.title||'', container: it["container-title"]||'', authors, year:String(year), type: it.type||'', URL: it.URL||'', DOI: it.DOI||'', raw: it };
+    byId[it.id] = doc; idx.addDoc(doc);
   }
 
-  // Wenn alle drei OK, App starten
-  const li = Array.from(checks.children);
-  co
+  const q = document.getElementById('q'), typeSel = document.getElementById('type'), yearIn = document.getElementById('year'),
+        results = document.getElementById('results'), count = document.getElementById('count');
+
+  function linkOf(d){ return d.URL || (d.DOI ? 'https://doi.org/'+d.DOI : ''); }
+  function render(list){
+    results.innerHTML = ''; count.textContent = `${list.length} Treffer`;
+    for (const d of list.slice(0, 500)) {
+      const it = byId[d.ref]; const y = it.year?` (${it.year})`:''; const a = it.authors?` — ${it.authors}`:''; const where = it.container?` — <em>${it.container}</em>`:'';
+      const href = linkOf(it);
+      const li = document.createElement('li');
+      li.innerHTML = `<strong>${it.title||'(ohne Titel)'}</strong>${y}${a}${where}${href?` — <a href="${href}" rel="noopener">link</a>`:''}`;
+      results.appendChild(li);
+    }
+  }
+  function search(){
+    const query = q.value.trim(), typ = typeSel.value, yr = yearIn.value.trim();
+    let hits = query ? idx.search(query, {expand:true}) : Object.keys(byId).map(id=>({ref:id,score:1}));
+    let out = hits.map(h=>byId[h.ref]);
+    if (typ) out = out.filter(d=>d.type===typ);
+    if (yr)  out = out.filter(d=>d.year===yr);
+    out.sort((a,b)=>(b.year||'').localeCompare(a.year||'') || a.title.localeCompare(b.title));
+    render(out.map(d=>({ref:d.id})));
+  }
+  q.addEventListener('input', search);
+  typeSel.addEventListener('change', search);
+  yearIn.addEventListener('input', search);
+  render(Object.keys(byId).map(id=>({ref:id})));
+})();
+</script>
+</body>
+</html>

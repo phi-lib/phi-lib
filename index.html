@@ -1,40 +1,137 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
-<meta charset="utf-8">
-<base href="https://phi-lib.github.io/phi-lib/">
-<title>Phi-Lib — Pilot Bibliography</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="assets/style.css">
+  <meta charset="utf-8">
+  <title>Phi-Lib — Pilot Bibliography</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- CSS wird dynamisch mit korrektem Basis-Pfad injiziert -->
+  <style>
+    :root { --max: 900px; --fg:#111; --muted:#666; --border:#e5e5e5; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif; color: var(--fg); margin: 0; }
+    header, section { max-width: var(--max); margin: 0 auto; padding: 1.25rem; }
+    header { border-bottom: 1px solid var(--border); }
+    h1 { font-size: 1.5rem; margin: .2rem 0 .6rem; }
+    p { color: var(--muted); }
+    #facets { display:flex; gap:.5rem; margin:.75rem 0; }
+    #facets > * { padding:.5rem; border:1px solid var(--border); border-radius:.5rem; }
+    #q { width:100%; padding:.75rem; border:1px solid var(--border); border-radius:.5rem; }
+    #results { padding-left:1.25rem; }
+    #results li { margin:.6rem 0; }
+    em { font-style: italic; }
+    a { text-decoration:none; border-bottom:1px solid currentColor; }
+    a:hover { opacity:.8; }
+    .ok { color: #0a7a0a; }
+    .err { color: #a00; }
+    code { background:#f7f7f7; padding:.1rem .3rem; border:1px solid #eee; border-radius:.25rem; }
+  </style>
 </head>
 <body>
 <header>
   <h1>Phi-Lib — Pilot Bibliography</h1>
-  <p>Search a small, curated set of references. Metadata only; links prefer DOI or openly available copies.</p>
+  <p>Diagnose + Suche. Zuerst wird geprüft, ob alle Ressourcen unter dem korrekten Pfad erreichbar sind.</p>
 </header>
 
-<section>
-  <input id="q" type="search" placeholder="Search title, author, year…" autofocus aria-label="Search bibliography">
+<section id="diag">
+  <h2>Diagnose</h2>
+  <ul id="checks"></ul>
+</section>
+
+<section id="app" style="display:none">
+  <input id="q" type="search" placeholder="Suche Titel, Autor, Jahr…" autofocus aria-label="Search bibliography">
   <div id="facets">
     <select id="type" aria-label="Filter by type">
-      <option value="">All types</option>
+      <option value="">Alle Typen</option>
       <option value="article-journal">Journal article</option>
       <option value="book">Book</option>
       <option value="chapter">Chapter</option>
       <option value="thesis">Thesis</option>
     </select>
-    <input id="year" type="number" placeholder="Year" aria-label="Filter by year">
+    <input id="year" type="number" placeholder="Jahr" aria-label="Filter by year">
   </div>
   <p id="count"></p>
   <ol id="results"></ol>
 </section>
 
-<script src="/phi-lib/assets/elasticlunr.min.js"></script>
 <script>
-(async function(){
-  const res = await fetch('data/biblio.json', {cache:'no-store'});
-  const items = await res.json();
+/** 1) Basis-URL robust bestimmen (funktioniert für GitHub Pages-Projektseiten) */
+(function(){
+  // pathname z.B. "/IHRNAME.github.io/phi-lib/" oder "/phi-lib/"
+  // Wir schneiden bis zum zweiten Segment ("/phi-lib/") inklusive Slash.
+  const segs = location.pathname.split('/').filter(Boolean);
+  // Falls Repo-Name in Pfad vorkommt, ermitteln:
+  let basePath = '/';
+  if (segs.length) {
+    // Suche das Segment, das wie der Repo-Name aussieht (heuristisch: letztes Segment)
+    const repo = segs[0].endsWith('.github.io') ? segs[1] : segs[0];
+    basePath = '/' + repo + '/';
+  }
+  // Sonderfall: Wenn already auf root (z.B. lokal), basePath = '/'
+  if (location.hostname.endsWith('.github.io') && !location.pathname.includes('/')) {
+    basePath = '/';
+  }
+  window.__BASE__ = location.origin + basePath;
+})();
+</script>
 
-  const idx = elasticlunr(function () {
-    this.setRef('id');
-    this.addField('title');
+<script>
+/** 2) Sichtbare Diagnose + dynamisches Nachladen von CSS/JS/JSON */
+(async function(){
+  const BASE = window.__BASE__;
+  const checks = document.getElementById('checks');
+
+  function add(status, label, url) {
+    const li = document.createElement('li');
+    li.innerHTML = (status ? '<span class="ok">OK</span>' : '<span class="err">FEHLER</span>')
+      + ' — ' + label + ': <code>' + url + '</code>';
+    checks.appendChild(li);
+  }
+
+  // a) CSS injizieren
+  const cssURL = BASE + 'assets/style.css';
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = cssURL;
+  document.head.appendChild(link);
+  // Wir testen CSS via HEAD-Request (fetch), GitHub erlaubt das
+  try {
+    const r = await fetch(cssURL, { method: 'HEAD', cache: 'no-store' });
+    add(r.ok, 'CSS', cssURL);
+  } catch(e) {
+    add(false, 'CSS', cssURL);
+  }
+
+  // b) JSON testen + laden
+  const jsonURL = BASE + 'data/biblio.json';
+  let items = [];
+  try {
+    const r = await fetch(jsonURL, { cache: 'no-store' });
+    add(r.ok, 'JSON', jsonURL);
+    if (!r.ok) throw new Error('JSON ' + r.status);
+    items = await r.json();
+    const c = document.getElementById('count');
+    c.textContent = `Loaded ${items.length} records`;
+  } catch(e) {
+    add(false, 'JSON', jsonURL);
+  }
+
+  // c) elasticlunr dynamisch laden
+  const jsURL = BASE + 'assets/elasticlunr.min.js';
+  try {
+    const r = await fetch(jsURL, { method: 'HEAD', cache: 'no-store' });
+    add(r.ok, 'JS (elasticlunr)', jsURL);
+    if (!r.ok) throw new Error('JS ' + r.status);
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = jsURL;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Script load error'));
+      document.body.appendChild(s);
+    });
+  } catch(e) {
+    add(false, 'JS (elasticlunr)', jsURL);
+  }
+
+  // Wenn alle drei OK, App starten
+  const li = Array.from(checks.children);
+  co

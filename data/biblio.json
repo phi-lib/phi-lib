@@ -1,0 +1,27 @@
+[
+  {
+    "id": "burnet1901-philebus",
+    "type": "book",
+    "title": "Platonis Opera, Vol. II (incl. Philebus)",
+    "author": [{"family": "Burnet", "given": "John"}],
+    "issued": {"date-parts": [[1901]]},
+    "publisher": "Oxford University Press",
+    "language": "en",
+    "URL": "https://archive.org/details/platonisopera2",
+    "keyword": ["edition", "Philebus"],
+    "note": "OCT edition; Philebus text included."
+  },
+  {
+    "id": "schofield1971-dyschereis",
+    "type": "article-journal",
+    "title": "Who were οἱ δυσχερεῖς in Plato, Philebus 44a ff.?",
+    "author": [{"family": "Schofield", "given": "Malcolm"}],
+    "container-title": "Museum Helveticum",
+    "volume": "28",
+    "page": "1-20",
+    "issued": {"date-parts": [[1971]]},
+    "language": "en",
+    "DOI": "",
+    "URL": ""
+  }
+]

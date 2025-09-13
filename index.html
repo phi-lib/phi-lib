@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phi-Lib — Pilot Bibliography</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header>
+  <h1>Phi-Lib — Pilot Bibliography</h1>
+  <p>Search a small, curated set of references. Metadata only; links prefer DOI or openly available copies.</p>
+</header>
+
+<section>
+  <input id="q" type="search" placeholder="Search title, author, year…" autofocus aria-label="Search bibliography">
+  <div id="facets">
+    <select id="type" aria-label="Filter by type">
+      <option value="">All types</option>
+      <option value="article-journal">Journal article</option>
+      <option value="book">Book</option>
+      <option value="chapter">Chapter</option>
+      <option value="thesis">Thesis</option>
+    </select>
+    <input id="year" type="number" placeholder="Year" aria-label="Filter by year">
+  </div>
+  <p id="count"></p>
+  <ol id="results"></ol>
+</section>
+
+<script src="assets/elasticlunr.min.js"></script>
+<script>
+(async function(){
+  const res = await fetch('data/biblio.json', {cache:'no-store'});
+  const items = await res.json();
+
+  const idx = elasticlunr(function () {
+    this.setRef('id');
+    this.addField('title');

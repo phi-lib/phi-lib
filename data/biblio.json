@@ -23,5 +23,18 @@
     "language": "en",
     "DOI": "",
     "URL": ""
+  },
+  {
+    "id": "busch2023ma",
+    "type": "thesis",
+    "title": "Unity or Disunity of Pleasure",
+    "author": [{"family": "Busch", "given": "Johannes"}],
+    "container-title": "LMU Munich",
+    "volume": "",
+    "page": "1-70",
+    "issued": {"date-parts": [[2023]]},
+    "language": "en",
+    "DOI": "",
+    "URL": ""
   }
 ]

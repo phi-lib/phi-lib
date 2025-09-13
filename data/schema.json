@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "type", "title", "issued"],
+    "properties": {
+      "id": {"type": "string"},
+      "type": {"type": "string"},
+      "title": {"type": "string"},
+      "author": {"type": "array", "items": {"type": "object"}},
+      "issued": {"type": "object"},
+      "container-title": {"type": "string"},
+      "DOI": {"type": "string"},
+      "URL": {"type": "string"},
+      "language": {"type": "string"},
+      "keyword": {"type": "array", "items": {"type": "string"}}
+    },
+    "additionalProperties": true
+  }
+}
